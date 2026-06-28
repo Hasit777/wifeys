@@ -35,7 +35,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { pin, locked, savePin, removePin, unlock, lockNow } = usePinLock()
   const { theme, toggleTheme } = useTheme()
-  const { permission: notifPermission, requestPermissionAndRegister, lastError: fcmError } = useFcm()
+  const { permission: notifPermission, requestPermissionAndRegister, lastError: fcmError, status: fcmStatus } = useFcm()
   const { unreadCount } = useGlobalChat()
 
   const [latestMessage, setLatestMessage] = useState(null)
@@ -180,6 +180,14 @@ export default function Dashboard() {
             <span>Notification setup error: {fcmError} — tap to retry</span>
           </div>
         )}
+
+        {/* TEMPORARY debug line — always visible so we can see real status.
+            Remove once notifications are confirmed working. */}
+        <div className={styles.pinHintMuted}>
+          <span>🛟</span>
+          <span>Debug: permission={notifPermission} · status={fcmStatus} · error={fcmError || 'none'}</span>
+        </div>
+
 
         {/* Invite */}
         {!partnerName && profile?.role === 'creator' && (
