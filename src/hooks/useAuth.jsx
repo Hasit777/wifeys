@@ -42,7 +42,7 @@ export function AuthProvider({ children }) {
     }
     // Check 2-user limit
     const usersSnap = await getDocs(collection(db, 'users'))
-    if (usersSnap.size >= 3) {
+    if (usersSnap.size >= 2) {
       throw new Error('This app already has 2 accounts. It\'s invite-only for just you two 🔒')
     }
     const isFirstUser = usersSnap.size === 0
