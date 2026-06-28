@@ -6,7 +6,7 @@ import { useAuth } from './useAuth'
 
 // Paste your VAPID key here once you generate it in Firebase Console
 // (Project Settings → Cloud Messaging → Web Push certificates)
-const VAPID_KEY = 'PASTE_YOUR_VAPID_KEY_HERE'
+const VAPID_KEY = 'BE_4N9jqOJ3STonJ2igsp0E5nC_D06WWgiml8H7s1olxAL84aUEQMFf4I4N9knqbq5BrfcZUhi_ADT_pw54Cm-A'
 
 // Explicitly register (or reuse) the Firebase Messaging service worker,
 // rather than trusting whatever navigator.serviceWorker.ready resolves to.
