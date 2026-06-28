@@ -13,8 +13,6 @@
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js')
 
-// Same config as src/lib/firebase.js — duplicated here because service
-// workers can't import from your app's source files
 firebase.initializeApp({
   apiKey: "AIzaSyD35PNdjUNu3GMQwDFyK2SShvExzxhC-10",
   authDomain: "justus-1a3c7.firebaseapp.com",
@@ -26,7 +24,10 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging()
 
-self.addEventListener('install', () => {
+self.addEventListener('install', (event) => {
+  // Activate this service worker immediately rather than waiting for
+  // old tabs to close — important so push delivery doesn't depend on
+  // the user having fully closed every tab first
   self.skipWaiting()
 })
 
@@ -34,27 +35,63 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim())
 })
 
-// Required for Android's PWA install criteria — pass requests straight
-// through to the network (we're not caching app data since Firestore
-// needs to stay live)
+// Required for Android's PWA install criteria. We deliberately keep this
+// minimal and non-blocking — if it ever throws, that must NOT prevent the
+// service worker from staying alive to receive pushes.
 self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request).catch(() => caches.match(event.request)))
+  // No-op passthrough — intentionally not calling event.respondWith() so
+  // the browser handles the request normally. A faulty custom response
+  // here could destabilise the worker; simplest is safest.
 })
 
+// ── This is the core of background delivery ────────────────────────────
 // Fires when a push arrives and the app is NOT in the foreground —
-// the actual "phone buzzes even though the app is closed" moment
+// the actual "phone buzzes even though the app is closed" moment.
 messaging.onBackgroundMessage((payload) => {
+  console.log('[firebase-messaging-sw.js] Background message received:', payload)
+  logSwEvent('onBackgroundMessage fired', payload)
+
   const title = payload.notification?.title || '💌 Just Us'
   const body = payload.notification?.body || 'You have a new message'
   const url = payload.fcmOptions?.link || payload.data?.url || '/chat'
 
-  self.registration.showNotification(title, {
+  return self.registration.showNotification(title, {
     body,
     icon: '/pwa-192.png',
     badge: '/pwa-192.png',
     tag: 'justus-message',
+    requireInteraction: false,
+    vibrate: [200, 100, 200],
     data: { url },
   })
+})
+
+// Writes a small debug entry straight to Firestore (via REST, since the
+// service worker can't use the regular Firestore SDK) so we can see what
+// actually happened on your phone from any other device's browser.
+function logSwEvent(label, payload) {
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/justus-1a3c7/databases/(default)/documents/swDebugLogs`
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          label: { stringValue: String(label) },
+          payload: { stringValue: JSON.stringify(payload || {}).slice(0, 800) },
+          time: { stringValue: new Date().toISOString() },
+        },
+      }),
+    }).catch(() => {})
+  } catch (_) {}
+}
+
+// Log every push event at the lowest level too, in case onBackgroundMessage
+// itself never fires — this tells us if the push reached the device at all
+self.addEventListener('push', (event) => {
+  let raw = null
+  try { raw = event.data ? event.data.json() : null } catch (_) { raw = event.data ? event.data.text() : null }
+  logSwEvent('raw push event received', raw)
 })
 
 // Clicking the notification opens (or focuses) the chat page
