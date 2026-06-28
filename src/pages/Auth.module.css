@@ -1,0 +1,204 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+}
+
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 24px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(20px);
+}
+
+.logo {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.heart {
+  display: block;
+  font-size: 2.2rem;
+  margin-bottom: 0.5rem;
+  animation: pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 400;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.title em {
+  font-style: italic;
+  color: var(--pink);
+}
+
+.subtitle {
+  font-size: 0.8rem;
+  color: var(--text3);
+  margin-top: 0.3rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tabs {
+  display: flex;
+  background: rgba(255,255,255,0.05);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 1.8rem;
+  gap: 4px;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.6rem;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.88rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  background: transparent;
+  color: var(--text3);
+}
+
+.tabActive {
+  background: rgba(255,255,255,0.1);
+  color: var(--text);
+}
+
+.error {
+  background: rgba(220,80,80,0.12);
+  border: 1px solid rgba(220,80,80,0.25);
+  color: #f08080;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.field {
+  margin-bottom: 1.1rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text3);
+  margin-bottom: 0.45rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.field input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.field input:focus {
+  border-color: var(--pink-border);
+}
+
+.field input::placeholder {
+  color: var(--text3);
+}
+
+.btnPrimary {
+  width: 100%;
+  padding: 0.85rem;
+  background: linear-gradient(135deg, #c45580, #9b4dc4);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  margin-top: 0.5rem;
+}
+
+.btnPrimary:hover { opacity: 0.88; }
+.btnPrimary:active { transform: scale(0.98); }
+.btnPrimary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.2rem 0;
+}
+
+.divider hr {
+  flex: 1;
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.divider span {
+  font-size: 0.72rem;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.inviteBox {
+  background: rgba(224,127,160,0.07);
+  border: 1px solid var(--pink-border);
+  border-radius: 14px;
+  padding: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.inviteBox p {
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.inviteInput {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: var(--pink);
+  font-family: monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  text-align: center;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.inviteInput:focus {
+  border-color: var(--pink-border);
+}

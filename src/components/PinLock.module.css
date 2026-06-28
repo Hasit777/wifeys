@@ -1,0 +1,182 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Background blobs matching the app vibe */
+.blob1 {
+  position: absolute;
+  top: -120px;
+  right: -80px;
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, rgba(255,79,139,0.12) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.blob2 {
+  position: absolute;
+  bottom: -100px;
+  left: -60px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(183,156,255,0.1) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+  max-width: 320px;
+  padding: 1rem 1.5rem 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.lockIcon {
+  font-size: 2rem;
+  margin-bottom: 0.6rem;
+  animation: floatLock 3s ease-in-out infinite;
+}
+
+@keyframes floatLock {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-5px); }
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 400;
+  color: var(--text);
+  margin: 0 0 0.3rem;
+  letter-spacing: -0.02em;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--text3);
+  margin: 0 0 1.5rem;
+  text-align: center;
+  min-height: 1.2em;
+  transition: color 0.2s;
+}
+
+/* ── Dots ────────────────────────────────────────────────────────────────── */
+.dots {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 2rem;
+}
+
+.dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border2);
+  background: transparent;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+}
+
+.dotFilled {
+  background: var(--pink);
+  border-color: var(--pink);
+  transform: scale(1.1);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-8px); }
+  40%       { transform: translateX(8px); }
+  60%       { transform: translateX(-6px); }
+  80%       { transform: translateX(6px); }
+}
+
+.dotsShake {
+  animation: shake 0.45s ease;
+}
+
+/* ── Keypad ──────────────────────────────────────────────────────────────── */
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 280px;
+}
+
+.key {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 1.4rem;
+  font-weight: 400;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, transform 0.1s, border-color 0.12s;
+  box-shadow: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.key:not(.keyEmpty):hover {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--border2);
+  transform: none;
+  box-shadow: none;
+}
+
+.key:not(.keyEmpty):active {
+  background: var(--pink-dim);
+  border-color: var(--pink-border);
+  transform: scale(0.93);
+  box-shadow: none;
+}
+
+.keyEmpty {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+  pointer-events: none;
+}
+
+.keyBack {
+  font-size: 1.1rem;
+  color: var(--text2);
+}
+
+/* ── Cancel ──────────────────────────────────────────────────────────────── */
+.cancelBtn {
+  margin-top: 1.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text3);
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 0.4rem 1rem;
+  border-radius: 8px;
+  transition: color 0.2s, background 0.2s;
+  box-shadow: none;
+}
+.cancelBtn:hover {
+  color: var(--text2);
+  background: rgba(255,255,255,0.05);
+  transform: none;
+  box-shadow: none;
+}
