@@ -413,7 +413,7 @@ export default function Chat() {
         <div className={styles.headerCenter}>
           <span className={styles.headerEmoji}>💬</span>
           <div>
-            <h1 className={styles.headerTitle}>Just Us</h1>
+            <h1 className={styles.headerTitle}>wifeys app</h1>
             {partnerTyping ? (
               <p className={styles.headerSubTyping}>typing…</p>
             ) : partnerName ? (
@@ -512,7 +512,7 @@ export default function Chat() {
           ref={inputRef}
           className={styles.input}
           rows={1}
-          placeholder="Say something nice…"
+          placeholder="i miss talking to you wifey"
           value={text}
           onChange={e => handleTextChange(e.target.value)}
           onKeyDown={handleKey}
