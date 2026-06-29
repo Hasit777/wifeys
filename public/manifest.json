@@ -1,7 +1,7 @@
 {
-  "name": "Just Us",
-  "short_name": "Just Us",
-  "description": "A private space just for the two of us 💖",
+  "name": "wifeys app",
+  "short_name": "wifeys app",
+  "description": "IT APP FOR US ",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",
