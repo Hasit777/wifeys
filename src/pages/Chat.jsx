@@ -452,8 +452,8 @@ export default function Chat() {
         {grouped.length === 0 && tab === 'all' && (
           <div className={styles.empty}>
             <span className={styles.emptyEmoji}>💌</span>
-            <p className={styles.emptyTitle}>Send your first message</p>
-            <p className={styles.emptySub}>Everything stays just between you two.</p>
+            <p className={styles.emptyTitle}>send first message</p>
+            <p className={styles.emptySub}>it between us.</p>
           </div>
         )}
 
