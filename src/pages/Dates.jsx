@@ -273,7 +273,7 @@ export default function Dates() {
         {!next && !loading && (
           <div className={styles.hero}>
             <p className={styles.heroLabel}>No plans yet</p>
-            <p className={styles.heroTitle}>Add your first date 💖</p>
+            <p className={styles.heroTitle}>add the first calendar date baby💖</p>
             <button className={styles.addHeroBtn} onClick={() => setShowAdd(true)}>
               Add a date
             </button>
@@ -308,8 +308,8 @@ export default function Dates() {
               </p>
               <p className={styles.emptySub}>
                 {tab === 'upcoming'
-                  ? 'Add something to look forward to 💖'
-                  : 'Dates youve passed will appear here'}
+                  ? 'calender for my princess💖'
+                  : 'Dates youve added will appear here'}
               </p>
             </div>
           )}
