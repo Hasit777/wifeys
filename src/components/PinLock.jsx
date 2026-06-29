@@ -71,7 +71,7 @@ export default function PinLock({ mode = 'unlock', onUnlock, onSetPin, onCancel 
       <div className={styles.inner}>
         <div className={styles.lockIcon}>🔒</div>
         <h1 className={styles.title}>
-          {mode === 'set' ? (phase === 'confirm' ? 'Confirm PIN' : 'Set PIN') : 'Just Us'}
+          {mode === 'set' ? (phase === 'confirm' ? 'Confirm PIN' : 'Set PIN') : 'wifeys app'}
         </h1>
         <p className={styles.hint}>{hint}</p>
 
