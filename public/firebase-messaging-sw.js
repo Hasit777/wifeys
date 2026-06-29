@@ -51,8 +51,8 @@ messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Background message received:', payload)
   logSwEvent('onBackgroundMessage fired', payload)
 
-  const title = payload.notification?.title || '💌 Just Us'
-  const body = payload.notification?.body || 'You have a new message'
+  const title = payload.notification?.title || 'wifeys app'
+  const body = payload.notification?.body || 'You hab new message'
   const url = payload.fcmOptions?.link || payload.data?.url || '/chat'
 
   return self.registration.showNotification(title, {
