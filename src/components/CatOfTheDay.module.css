@@ -4,8 +4,8 @@
   border: 1px solid var(--border);
   border-radius: 50%;
   padding: 0;
-  width: 44px;
-  height: 44px;
+  width: 84px;
+  height: 84px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -27,8 +27,8 @@
   background: rgba(255,255,255,0.4);
   border: 1px dashed var(--border2);
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
+  width: 84px;
+  height: 84px;
   display: flex;
   align-items: center;
   justify-content: center;
