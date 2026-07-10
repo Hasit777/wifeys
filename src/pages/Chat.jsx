@@ -69,6 +69,8 @@ function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName }) {
     clearTimeout(pressTimer.current)
   }
 
+  const isSticker = msg.type === 'sticker'
+
   return (
     <div
       className={`${styles.bubbleRow} ${isMine ? styles.bubbleRowMine : styles.bubbleRowTheirs}`}
@@ -79,14 +81,19 @@ function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName }) {
       onTouchEnd={endPress}
     >
       {/* Pinned / fav badges */}
-      <div className={`${styles.bubble} ${isMine ? styles.bubbleMine : styles.bubbleTheirs} ${pressing ? styles.bubblePressing : ''}`}>
+      <div className={`${styles.bubble} ${isSticker ? styles.stickerBubble : (isMine ? styles.bubbleMine : styles.bubbleTheirs)} ${pressing ? styles.bubblePressing : ''}`}>
         {(msg.pinned || msg.favourited) && (
           <div className={styles.bubbleBadges}>
             {msg.pinned && <span className={styles.badge}>📌</span>}
             {msg.favourited && <span className={styles.badge}>⭐</span>}
           </div>
         )}
-        <p className={styles.bubbleText}>{msg.text}</p>
+
+        {isSticker ? (
+          <img src={msg.stickerUrl} alt="🐱" className={styles.stickerImg} draggable={false} />
+        ) : (
+          <p className={styles.bubbleText}>{msg.text}</p>
+        )}
 
         {/* Reactions */}
         {msg.reactions && msg.reactions.length > 0 && (
@@ -138,7 +145,11 @@ function ContextMenu({ msg, isMine, onClose, onPin, onFav, onReact }) {
     <div className={styles.contextOverlay}>
       <div ref={menuRef} className={styles.contextMenu}>
         <div className={styles.contextPreview}>
-          <p>{msg.text.length > 60 ? msg.text.slice(0, 60) + '…' : msg.text}</p>
+          <p>
+            {msg.type === 'sticker'
+              ? '🐱 Sticker'
+              : (msg.text.length > 60 ? msg.text.slice(0, 60) + '…' : msg.text)}
+          </p>
         </div>
 
         {/* Quick reactions */}
@@ -178,14 +189,47 @@ export default function Chat() {
   const [tab, setTab] = useState('all') // 'all' | 'pinned' | 'favourites'
   const [partnerName, setPartnerName] = useState('')
   const [partnerTyping, setPartnerTyping] = useState(false)
+  const [cats, setCats] = useState([])
+  const [showStickers, setShowStickers] = useState(false)
+  const [sendingSticker, setSendingSticker] = useState(null)
 
   const { enabled: soundOn, toggleSound, playSend, playReceive } = useSound()
   const { setChatPageOpen } = useGlobalChat()
 
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
+  const pageRef = useRef(null)
   const messagesRef = collection(db, 'messages')
   const typingTimeoutRef = useRef(null)
+
+  // Keep the page locked to the *actual visible* viewport so the on-screen
+  // keyboard resizes the layout instead of the whole app jumping/scrolling
+  // when the textarea is focused (mainly an iOS/Android quirk).
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    function setAppHeight() {
+      document.documentElement.style.setProperty('--app-height', `${vv.height}px`)
+      window.scrollTo(0, 0)
+    }
+    setAppHeight()
+    vv.addEventListener('resize', setAppHeight)
+    vv.addEventListener('scroll', setAppHeight)
+    return () => {
+      vv.removeEventListener('resize', setAppHeight)
+      vv.removeEventListener('scroll', setAppHeight)
+      document.documentElement.style.removeProperty('--app-height')
+    }
+  }, [])
+
+  // Load cat photos (same collection Cat of the Day uses) so they can be
+  // sent as little stickers in chat
+  useEffect(() => {
+    if (!user) return
+    getDocs(collection(db, 'cats'))
+      .then(snap => setCats(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .catch(e => console.error(e))
+  }, [user])
 
   // Tell the global chat listener "I'm open" so it doesn't double-play
   // the receive sound while this page is already visible
@@ -284,6 +328,7 @@ export default function Chat() {
     setSending(true)
     setText('')
     setShowEmoji(false)
+    setShowStickers(false)
     clearTimeout(typingTimeoutRef.current)
     broadcastTyping(false)
     try {
@@ -369,6 +414,32 @@ export default function Chat() {
     inputRef.current?.focus()
   }
 
+  // Send a cat photo as a little sticker message
+  async function sendSticker(cat) {
+    if (sendingSticker) return
+    setSendingSticker(cat.id)
+    try {
+      await addDoc(messagesRef, {
+        type: 'sticker',
+        stickerUrl: cat.photoBase64,
+        senderId: user.uid,
+        senderName: profile?.name || 'You',
+        createdAt: serverTimestamp(),
+        readBy: [user.uid],
+        pinned: false,
+        favourited: false,
+        reactions: [],
+      })
+      playSend()
+      pushToPartner('🐱 sent a sticker')
+      setShowStickers(false)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSendingSticker(null)
+    }
+  }
+
   // Pin toggle
   async function togglePin(msg) {
     await updateDoc(doc(db, 'messages', msg.id), { pinned: !msg.pinned })
@@ -399,7 +470,7 @@ export default function Chat() {
   const grouped = groupByDate(displayed)
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} ref={pageRef}>
       {/* Background orbs */}
       <div className="bg-orbs">
         <div className="orb orb-1" />
@@ -503,10 +574,19 @@ export default function Chat() {
       <div className={styles.inputBar}>
         <button
           className={`${styles.emojiToggle} ${showEmoji ? styles.emojiToggleActive : ''}`}
-          onClick={() => setShowEmoji(s => !s)}
+          onClick={() => { setShowEmoji(s => !s); setShowStickers(false) }}
           title="Emoji"
         >
           🙂
+        </button>
+        <button
+          className={`${styles.stickerToggle} ${showStickers ? styles.stickerToggleActive : ''}`}
+          onClick={() => { setShowStickers(s => !s); setShowEmoji(false) }}
+          title="Cat stickers"
+        >
+          {cats[0] ? (
+            <img src={cats[0].photoBase64} alt="" className={styles.stickerToggleIcon} />
+          ) : '🐱'}
         </button>
         <textarea
           ref={inputRef}
@@ -531,6 +611,26 @@ export default function Chat() {
         <div className={styles.emojiPicker}>
           {EMOJIS.map(e => (
             <button key={e} className={styles.emojiBtn} onClick={() => insertEmoji(e)}>{e}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Cat sticker picker */}
+      {showStickers && (
+        <div className={styles.stickerPicker}>
+          {cats.length === 0 && (
+            <p className={styles.stickerPickerEmpty}>
+              No cat photos yet — add some from Cat of the Day on the dashboard 🐾
+            </p>
+          )}
+          {cats.map(cat => (
+            <img
+              key={cat.id}
+              src={cat.photoBase64}
+              alt="🐱"
+              className={`${styles.stickerThumb} ${sendingSticker === cat.id ? styles.stickerThumbSending : ''}`}
+              onClick={() => sendSticker(cat)}
+            />
           ))}
         </div>
       )}
