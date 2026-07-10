@@ -69,9 +69,20 @@
 ========================= */
 html, body, #root {
   height: 100%;
+  overscroll-behavior: none;
+}
+
+html {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  width: 100%;
 }
 
 body {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
   background: linear-gradient(180deg, #fff7f9 0%, #ffecef 100%);
   color: var(--text);
   font-family: var(--font-body);
