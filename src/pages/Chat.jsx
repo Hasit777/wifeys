@@ -198,32 +198,11 @@ export default function Chat() {
 
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
-  const pageRef = useRef(null)
   const messagesRef = collection(db, 'messages')
   const typingTimeoutRef = useRef(null)
 
-  // Keep the page locked to the *actual visible* viewport so the on-screen
-  // keyboard resizes the layout instead of the whole app jumping/scrolling
-  // when the textarea is focused (mainly an iOS/Android quirk).
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv) return
-    function setAppHeight() {
-      document.documentElement.style.setProperty('--app-height', `${vv.height}px`)
-      window.scrollTo(0, 0)
-    }
-    setAppHeight()
-    vv.addEventListener('resize', setAppHeight)
-    vv.addEventListener('scroll', setAppHeight)
-    return () => {
-      vv.removeEventListener('resize', setAppHeight)
-      vv.removeEventListener('scroll', setAppHeight)
-      document.documentElement.style.removeProperty('--app-height')
-    }
-  }, [])
-
-  // Load cat photos (same collection Cat of the Day uses) so they can be
-  // sent as little stickers in chat
+  // Load cat photos (same collection Cat of the Day uses) so their cropped
+  // faces can be sent as little emoji-style stickers in chat
   useEffect(() => {
     if (!user) return
     getDocs(collection(db, 'cats'))
@@ -414,14 +393,15 @@ export default function Chat() {
     inputRef.current?.focus()
   }
 
-  // Send a cat photo as a little sticker message
+  // Send a cat photo as a little emoji-style sticker (uses the cropped face
+  // version if it's ready, otherwise falls back to the full photo)
   async function sendSticker(cat) {
     if (sendingSticker) return
     setSendingSticker(cat.id)
     try {
       await addDoc(messagesRef, {
         type: 'sticker',
-        stickerUrl: cat.photoBase64,
+        stickerUrl: cat.faceBase64 || cat.photoBase64,
         senderId: user.uid,
         senderName: profile?.name || 'You',
         createdAt: serverTimestamp(),
@@ -470,7 +450,7 @@ export default function Chat() {
   const grouped = groupByDate(displayed)
 
   return (
-    <div className={styles.page} ref={pageRef}>
+    <div className={styles.page}>
       {/* Background orbs */}
       <div className="bg-orbs">
         <div className="orb orb-1" />
@@ -585,7 +565,7 @@ export default function Chat() {
           title="Cat stickers"
         >
           {cats[0] ? (
-            <img src={cats[0].photoBase64} alt="" className={styles.stickerToggleIcon} />
+            <img src={cats[0].faceBase64 || cats[0].photoBase64} alt="" className={styles.stickerToggleIcon} />
           ) : '🐱'}
         </button>
         <textarea
@@ -626,7 +606,7 @@ export default function Chat() {
           {cats.map(cat => (
             <img
               key={cat.id}
-              src={cat.photoBase64}
+              src={cat.faceBase64 || cat.photoBase64}
               alt="🐱"
               className={`${styles.stickerThumb} ${sendingSticker === cat.id ? styles.stickerThumbSending : ''}`}
               onClick={() => sendSticker(cat)}
