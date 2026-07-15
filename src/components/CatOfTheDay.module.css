@@ -169,6 +169,18 @@
 }
 .deleteBtn:hover { background: rgba(255,79,139,0.8); transform: none; box-shadow: none; }
 
+.catFaceBadge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.25);
+  object-fit: cover;
+}
+
 /* ── Batch upload picker ─────────────────────────────────────────────────── */
 .addSection {
   display: flex;
