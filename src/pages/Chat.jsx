@@ -558,6 +558,7 @@ export default function Chat() {
       <div className={styles.inputBar}>
         <button
           className={`${styles.emojiToggle} ${showEmoji ? styles.emojiToggleActive : ''}`}
+          onMouseDown={e => e.preventDefault()}
           onClick={() => { setShowEmoji(s => !s); setShowStickers(false) }}
           title="Emoji"
         >
@@ -565,6 +566,7 @@ export default function Chat() {
         </button>
         <button
           className={`${styles.stickerToggle} ${showStickers ? styles.stickerToggleActive : ''}`}
+          onMouseDown={e => e.preventDefault()}
           onClick={() => { setShowStickers(s => !s); setShowEmoji(false) }}
           title="Cat stickers"
         >
@@ -583,6 +585,7 @@ export default function Chat() {
         />
         <button
           className={`${styles.sendBtn} ${text.trim() ? styles.sendBtnActive : ''}`}
+          onMouseDown={e => e.preventDefault()}
           onClick={sendMessage}
           disabled={!text.trim() || sending}
         >
