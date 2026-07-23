@@ -290,9 +290,12 @@ export default function Chat() {
 
   function handleTextChange(value) {
     setText(value)
-    broadcastTyping(true)
+    if (!typingTimeoutRef.current) broadcastTyping(true)
     clearTimeout(typingTimeoutRef.current)
-    typingTimeoutRef.current = setTimeout(() => broadcastTyping(false), 2000)
+    typingTimeoutRef.current = setTimeout(() => {
+      broadcastTyping(false)
+      typingTimeoutRef.current = null
+    }, 2000)
   }
 
   // Auto-scroll to bottom on new messages
@@ -309,6 +312,7 @@ export default function Chat() {
     setShowEmoji(false)
     setShowStickers(false)
     clearTimeout(typingTimeoutRef.current)
+    typingTimeoutRef.current = null
     broadcastTyping(false)
     try {
       await addDoc(messagesRef, {
