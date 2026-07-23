@@ -5,6 +5,7 @@
   height: 100dvh;
   position: relative;
   overflow: hidden;
+  padding-bottom: env(keyboard-inset-height, 0px);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
