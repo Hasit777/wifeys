@@ -66,11 +66,22 @@ export default async function handler(req, res) {
   try {
     await admin.messaging().send({
       token,
-      notification: { title, body },
+      // Deliberately data-only (no top-level "notification" field). When a
+      // notification field is present, Firebase's SDK auto-displays a bare
+      // notification itself the instant the push arrives — before our own
+      // service worker code runs — and that auto-shown one has no vibrate
+      // pattern and isn't marked high-priority, so it just quietly appears
+      // in the status bar instead of popping up/ringing. Sending data-only
+      // means ONLY our own showNotification() call (in
+      // firebase-messaging-sw.js) ever runs, with full control.
+      data: {
+        title: String(title),
+        body: String(body),
+        url: String(url || '/chat'),
+      },
       webpush: {
-        notification: {
-          icon: '/pwa-192.png',
-          badge: '/pwa-192.png',
+        headers: {
+          Urgency: 'high', // hint to deliver promptly, not batched/delayed
         },
         fcmOptions: {
           link: url || '/chat',
