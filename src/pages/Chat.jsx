@@ -19,6 +19,27 @@ const EMOJIS = [
 ]
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+// Resize + compress a photo client-side before storing it as base64 in the
+// message doc — keeps well under Firestore's 1MB per-document limit.
+function compressPhoto(file, maxWidth = 1000, quality = 0.72) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width)
+      const canvas = document.createElement('canvas')
+      canvas.width = img.width * scale
+      canvas.height = img.height * scale
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(url)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = reject
+    img.src = url
+  })
+}
+
 function formatTime(ts) {
   if (!ts) return ''
   const d = ts.toDate ? ts.toDate() : new Date(ts)
@@ -53,7 +74,7 @@ function groupByDate(messages) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName }) {
+function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName, onOpenPhoto }) {
   const pressTimer = useRef(null)
   const [pressing, setPressing] = useState(false)
 
@@ -70,6 +91,7 @@ function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName }) {
   }
 
   const isSticker = msg.type === 'sticker'
+  const isPhoto = msg.type === 'photo'
 
   return (
     <div
@@ -81,7 +103,7 @@ function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName }) {
       onTouchEnd={endPress}
     >
       {/* Pinned / fav badges */}
-      <div className={`${styles.bubble} ${isSticker ? styles.stickerBubble : (isMine ? styles.bubbleMine : styles.bubbleTheirs)} ${pressing ? styles.bubblePressing : ''}`}>
+      <div className={`${styles.bubble} ${isSticker ? styles.stickerBubble : ''} ${isPhoto && msg.photoUrl ? styles.photoBubble : ''} ${!isSticker && !(isPhoto && msg.photoUrl) ? (isMine ? styles.bubbleMine : styles.bubbleTheirs) : ''} ${pressing ? styles.bubblePressing : ''}`}>
         {(msg.pinned || msg.favourited) && (
           <div className={styles.bubbleBadges}>
             {msg.pinned && <span className={styles.badge}>📌</span>}
@@ -89,9 +111,22 @@ function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName }) {
           </div>
         )}
 
-        {isSticker ? (
+        {isSticker && (
           <img src={msg.stickerUrl} alt="🐱" className={styles.stickerImg} draggable={false} />
-        ) : (
+        )}
+        {isPhoto && msg.photoUrl && (
+          <img
+            src={msg.photoUrl}
+            alt=""
+            className={styles.photoImg}
+            draggable={false}
+            onClick={e => { e.stopPropagation(); onOpenPhoto(msg) }}
+          />
+        )}
+        {isPhoto && !msg.photoUrl && (
+          <p className={styles.photoViewedText}>📷 Photo · viewed</p>
+        )}
+        {!isSticker && !isPhoto && (
           <p className={styles.bubbleText}>{msg.text}</p>
         )}
 
@@ -148,6 +183,8 @@ function ContextMenu({ msg, isMine, onClose, onPin, onFav, onReact }) {
           <p>
             {msg.type === 'sticker'
               ? '🐱 Sticker'
+              : msg.type === 'photo'
+              ? '📷 Photo'
               : (msg.text.length > 60 ? msg.text.slice(0, 60) + '…' : msg.text)}
           </p>
         </div>
@@ -192,12 +229,15 @@ export default function Chat() {
   const [cats, setCats] = useState([])
   const [showStickers, setShowStickers] = useState(false)
   const [sendingSticker, setSendingSticker] = useState(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [lightboxPhoto, setLightboxPhoto] = useState(null)
 
   const { enabled: soundOn, toggleSound, playSend, playReceive } = useSound()
   const { setChatPageOpen } = useGlobalChat()
 
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
+  const photoInputRef = useRef(null)
   const messagesRef = collection(db, 'messages')
   const typingTimeoutRef = useRef(null)
 
@@ -397,6 +437,66 @@ export default function Chat() {
     inputRef.current?.focus()
   }
 
+  // Attach + send a photo from the camera roll
+  async function sendPhoto(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow picking the same file again later
+    if (!file) return
+
+    setUploadingPhoto(true)
+    try {
+      let photoUrl = await compressPhoto(file)
+      // Firestore caps documents at 1MB — if a busy/high-res photo is still
+      // too big after the first pass, compress harder instead of failing
+      if (photoUrl.length > 900_000) {
+        photoUrl = await compressPhoto(file, 700, 0.6)
+      }
+      if (photoUrl.length > 900_000) {
+        alert("That photo's too large even after compressing — try a smaller one.")
+        return
+      }
+      await addDoc(messagesRef, {
+        type: 'photo',
+        photoUrl,
+        senderId: user.uid,
+        senderName: profile?.name || 'You',
+        createdAt: serverTimestamp(),
+        readBy: [user.uid],
+        pinned: false,
+        favourited: false,
+        reactions: [],
+      })
+      playSend()
+      pushToPartner('📷 sent a photo')
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  // Open a photo full-size. Once the *recipient* (not the sender) views it,
+  // remove the image data from Firestore — it's already been delivered, so
+  // there's no need to keep it in the database taking up space.
+  function viewPhoto(msg) {
+    setLightboxPhoto(msg)
+    if (msg.senderId !== user.uid && msg.photoUrl) {
+      updateDoc(doc(db, 'messages', msg.id), {
+        photoUrl: deleteField(),
+        photoViewed: true,
+      }).catch(err => console.error('[photo] failed to clear from Firestore', err))
+    }
+  }
+
+  function downloadPhoto(url) {
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `wifeys-${Date.now()}.jpg`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+  }
+
   // Send a cat photo as a little emoji-style sticker (uses the cropped face
   // version if it's ready, otherwise falls back to the full photo)
   async function sendSticker(cat) {
@@ -537,6 +637,7 @@ export default function Chat() {
               partnerName={partnerName}
               onLongPress={setContextMsg}
               onReact={toggleReact}
+              onOpenPhoto={viewPhoto}
             />
           )
         })}
@@ -556,6 +657,22 @@ export default function Chat() {
 
       {/* Input bar */}
       <div className={styles.inputBar}>
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          onChange={sendPhoto}
+          style={{ display: 'none' }}
+        />
+        <button
+          className={styles.attachToggle}
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => photoInputRef.current?.click()}
+          disabled={uploadingPhoto}
+          title="Attach photo"
+        >
+          {uploadingPhoto ? <span className={styles.attachSpinner} /> : '📷'}
+        </button>
         <button
           className={`${styles.emojiToggle} ${showEmoji ? styles.emojiToggleActive : ''}`}
           onMouseDown={e => e.preventDefault()}
@@ -632,6 +749,20 @@ export default function Chat() {
           onFav={toggleFav}
           onReact={toggleReact}
         />
+      )}
+
+      {/* Full-size photo viewer */}
+      {lightboxPhoto && (
+        <div className={styles.lightbox} onClick={() => setLightboxPhoto(null)}>
+          <img src={lightboxPhoto.photoUrl} alt="" className={styles.lightboxImg} />
+          <button
+            className={styles.lightboxDownload}
+            onClick={e => { e.stopPropagation(); downloadPhoto(lightboxPhoto.photoUrl) }}
+            title="Save to Downloads"
+          >
+            ⬇ Save
+          </button>
+        </div>
       )}
     </div>
   )
