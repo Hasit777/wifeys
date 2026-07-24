@@ -51,9 +51,9 @@ messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Background message received:', payload)
   logSwEvent('onBackgroundMessage fired', payload)
 
-  const title = payload.notification?.title || 'wifeys app'
-  const body = payload.notification?.body || 'You hab new message'
-  const url = payload.fcmOptions?.link || payload.data?.url || '/chat'
+  const title = payload.data?.title || payload.notification?.title || 'wifeys app'
+  const body = payload.data?.body || payload.notification?.body || 'You hab new message'
+  const url = payload.data?.url || payload.fcmOptions?.link || '/chat'
 
   return self.registration.showNotification(title, {
     body,
@@ -61,6 +61,8 @@ messaging.onBackgroundMessage((payload) => {
     badge: '/pwa-192.png',
     tag: 'justus-message',
     requireInteraction: false,
+    silent: false,
+    renotify: true, // re-alert (vibrate again) even if a previous one with this tag is still showing
     vibrate: [200, 100, 200],
     data: { url },
   })
