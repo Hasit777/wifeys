@@ -502,7 +502,7 @@ export default function Chat() {
     e.target.value = '' // allow picking the same file again later
     if (!file) return
     if (!encReady) {
-      alert("Encryption isn't set up yet — make sure your partner has opened the app at least once, then try again.")
+      alert("Encryption isn't set up yet — waiting for princess to text.")
       return
     }
 
