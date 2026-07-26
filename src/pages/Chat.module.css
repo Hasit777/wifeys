@@ -318,6 +318,16 @@
 }
 
 /* ── Input bar ──────────────────────────────────────────────────────────── */
+.encBanner {
+  font-size: 0.75rem;
+  color: var(--text2);
+  text-align: center;
+  padding: 0.4rem 1rem;
+  background: rgba(255,79,139,0.08);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
 .inputBar {
   display: flex;
   align-items: flex-end;
@@ -449,6 +459,7 @@
 }
 
 .attachToggle:disabled { opacity: 0.6; cursor: default; }
+.stickerToggle:disabled { opacity: 0.6; cursor: default; }
 
 .attachSpinner {
   width: 15px;
