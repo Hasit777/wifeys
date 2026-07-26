@@ -9,6 +9,7 @@ import { db } from '../lib/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { useSound } from '../hooks/useSound'
 import { useGlobalChat } from '../hooks/useGlobalChat'
+import { useEncryption } from '../hooks/useEncryption'
 import styles from './Chat.module.css'
 
 // ─── Emoji picker data ────────────────────────────────────────────────────────
@@ -74,7 +75,7 @@ function groupByDate(messages) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName, onOpenPhoto }) {
+function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName, onOpenPhoto, decrypted }) {
   const pressTimer = useRef(null)
   const [pressing, setPressing] = useState(false)
 
@@ -93,6 +94,28 @@ function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName, onOpenP
   const isSticker = msg.type === 'sticker'
   const isPhoto = msg.type === 'photo'
 
+  // Figure out what to actually show: encrypted messages need decrypting
+  // (async, may still be pending); legacy plaintext messages (sent before
+  // encryption was added) render as-is; photos can also be "gone" once
+  // the recipient has already viewed them.
+  const hasEncContent = msg.enc && msg.ciphertext
+  const hasLegacyContent = !msg.enc && (isPhoto ? !!msg.photoUrl : isSticker ? !!msg.stickerUrl : msg.text != null)
+
+  let bodyState // 'gone' | 'pending' | 'error' | 'ready'
+  let bodyValue
+  if (isPhoto && !hasEncContent && !hasLegacyContent) {
+    bodyState = 'gone'
+  } else if (msg.enc) {
+    if (decrypted === undefined) bodyState = 'pending'
+    else if (decrypted === null) bodyState = 'error'
+    else { bodyState = 'ready'; bodyValue = decrypted }
+  } else {
+    bodyState = 'ready'
+    bodyValue = isPhoto ? msg.photoUrl : isSticker ? msg.stickerUrl : msg.text
+  }
+
+  const isImageType = isSticker || isPhoto
+
   return (
     <div
       className={`${styles.bubbleRow} ${isMine ? styles.bubbleRowMine : styles.bubbleRowTheirs}`}
@@ -103,7 +126,7 @@ function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName, onOpenP
       onTouchEnd={endPress}
     >
       {/* Pinned / fav badges */}
-      <div className={`${styles.bubble} ${isSticker ? styles.stickerBubble : ''} ${isPhoto && msg.photoUrl ? styles.photoBubble : ''} ${!isSticker && !(isPhoto && msg.photoUrl) ? (isMine ? styles.bubbleMine : styles.bubbleTheirs) : ''} ${pressing ? styles.bubblePressing : ''}`}>
+      <div className={`${styles.bubble} ${isSticker ? styles.stickerBubble : ''} ${isPhoto && bodyState === 'ready' ? styles.photoBubble : ''} ${!isSticker && !(isPhoto && bodyState === 'ready') ? (isMine ? styles.bubbleMine : styles.bubbleTheirs) : ''} ${pressing ? styles.bubblePressing : ''}`}>
         {(msg.pinned || msg.favourited) && (
           <div className={styles.bubbleBadges}>
             {msg.pinned && <span className={styles.badge}>📌</span>}
@@ -111,23 +134,35 @@ function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName, onOpenP
           </div>
         )}
 
-        {isSticker && (
-          <img src={msg.stickerUrl} alt="🐱" className={styles.stickerImg} draggable={false} />
+        {isImageType && bodyState === 'pending' && (
+          <p className={styles.photoViewedText}>🔒 Decrypting…</p>
         )}
-        {isPhoto && msg.photoUrl && (
+        {isImageType && bodyState === 'error' && (
+          <p className={styles.photoViewedText}>⚠️ Couldn't decrypt</p>
+        )}
+        {isPhoto && bodyState === 'gone' && (
+          <p className={styles.photoViewedText}>📷 Photo · viewed</p>
+        )}
+        {isSticker && bodyState === 'ready' && (
+          <img src={bodyValue} alt="🐱" className={styles.stickerImg} draggable={false} />
+        )}
+        {isPhoto && bodyState === 'ready' && (
           <img
-            src={msg.photoUrl}
+            src={bodyValue}
             alt=""
             className={styles.photoImg}
             draggable={false}
-            onClick={e => { e.stopPropagation(); onOpenPhoto(msg) }}
+            onClick={e => { e.stopPropagation(); onOpenPhoto(msg, bodyValue) }}
           />
         )}
-        {isPhoto && !msg.photoUrl && (
-          <p className={styles.photoViewedText}>📷 Photo · viewed</p>
+        {!isImageType && bodyState === 'pending' && (
+          <p className={styles.bubbleText} style={{ fontStyle: 'italic', opacity: 0.7 }}>🔒 Decrypting…</p>
         )}
-        {!isSticker && !isPhoto && (
-          <p className={styles.bubbleText}>{msg.text}</p>
+        {!isImageType && bodyState === 'error' && (
+          <p className={styles.bubbleText} style={{ fontStyle: 'italic', opacity: 0.7 }}>⚠️ Couldn't decrypt this message</p>
+        )}
+        {!isImageType && bodyState === 'ready' && (
+          <p className={styles.bubbleText}>{bodyValue}</p>
         )}
 
         {/* Reactions */}
@@ -161,7 +196,7 @@ function MessageBubble({ msg, isMine, onLongPress, onReact, partnerName, onOpenP
   )
 }
 
-function ContextMenu({ msg, isMine, onClose, onPin, onFav, onReact }) {
+function ContextMenu({ msg, isMine, onClose, onPin, onFav, onReact, decrypted }) {
   const menuRef = useRef(null)
 
   useEffect(() => {
@@ -185,6 +220,8 @@ function ContextMenu({ msg, isMine, onClose, onPin, onFav, onReact }) {
               ? '🐱 Sticker'
               : msg.type === 'photo'
               ? '📷 Photo'
+              : msg.enc
+              ? (decrypted == null ? '🔒 …' : (decrypted.length > 60 ? decrypted.slice(0, 60) + '…' : decrypted))
               : (msg.text.length > 60 ? msg.text.slice(0, 60) + '…' : msg.text)}
           </p>
         </div>
@@ -231,6 +268,9 @@ export default function Chat() {
   const [sendingSticker, setSendingSticker] = useState(null)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [lightboxPhoto, setLightboxPhoto] = useState(null)
+  const [decryptedMap, setDecryptedMap] = useState({}) // msg.id -> decrypted value | null (failed)
+
+  const { ready: encReady, encrypt, decrypt } = useEncryption(user)
 
   const { enabled: soundOn, toggleSound, playSend, playReceive } = useSound()
   const { setChatPageOpen } = useGlobalChat()
@@ -249,6 +289,22 @@ export default function Chat() {
       .then(snap => setCats(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
       .catch(e => console.error(e))
   }, [user])
+
+  // Decrypt any encrypted messages we haven't decrypted yet
+  useEffect(() => {
+    if (!encReady) return
+    const pending = messages.filter(m => m.enc && m.ciphertext && !(m.id in decryptedMap))
+    if (pending.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      const results = {}
+      for (const m of pending) {
+        results[m.id] = await decrypt(m)
+      }
+      if (!cancelled) setDecryptedMap(prev => ({ ...prev, ...results }))
+    })()
+    return () => { cancelled = true }
+  }, [messages, encReady, decrypt])
 
   // Tell the global chat listener "I'm open" so it doesn't double-play
   // the receive sound while this page is already visible
@@ -346,7 +402,7 @@ export default function Chat() {
   // Send message
   async function sendMessage() {
     const trimmed = text.trim()
-    if (!trimmed || sending) return
+    if (!trimmed || sending || !encReady) return
     setSending(true)
     setText('')
     setShowEmoji(false)
@@ -355,8 +411,9 @@ export default function Chat() {
     typingTimeoutRef.current = null
     broadcastTyping(false)
     try {
+      const encrypted = await encrypt(trimmed)
       await addDoc(messagesRef, {
-        text: trimmed,
+        ...encrypted,
         senderId: user.uid,
         senderName: profile?.name || 'You',
         createdAt: serverTimestamp(),
@@ -367,7 +424,9 @@ export default function Chat() {
       })
       playSend()
       // Push a real notification to the partner's device — this is what
-      // wakes their phone even if their app is fully closed
+      // wakes their phone even if their app is fully closed. Sent as
+      // plaintext to the notification server by choice, for a readable
+      // preview — only the Firestore copy is encrypted.
       pushToPartner(trimmed)
     } catch (e) {
       console.error(e)
@@ -442,22 +501,29 @@ export default function Chat() {
     const file = e.target.files?.[0]
     e.target.value = '' // allow picking the same file again later
     if (!file) return
+    if (!encReady) {
+      alert("Encryption isn't set up yet — make sure your partner has opened the app at least once, then try again.")
+      return
+    }
 
     setUploadingPhoto(true)
     try {
       let photoUrl = await compressPhoto(file)
-      // Firestore caps documents at 1MB — if a busy/high-res photo is still
-      // too big after the first pass, compress harder instead of failing
-      if (photoUrl.length > 900_000) {
+      let encrypted = await encrypt(photoUrl)
+      // Firestore caps documents at 1MB — encryption + base64 adds real
+      // overhead on top of the already-base64 image data, so check the
+      // final encrypted size, not the raw photo size
+      if (encrypted.ciphertext.length > 900_000) {
         photoUrl = await compressPhoto(file, 700, 0.6)
+        encrypted = await encrypt(photoUrl)
       }
-      if (photoUrl.length > 900_000) {
+      if (encrypted.ciphertext.length > 900_000) {
         alert("That photo's too large even after compressing — try a smaller one.")
         return
       }
       await addDoc(messagesRef, {
         type: 'photo',
-        photoUrl,
+        ...encrypted,
         senderId: user.uid,
         senderName: profile?.name || 'You',
         createdAt: serverTimestamp(),
@@ -478,9 +544,17 @@ export default function Chat() {
   // Open a photo full-size. Once the *recipient* (not the sender) views it,
   // remove the image data from Firestore — it's already been delivered, so
   // there's no need to keep it in the database taking up space.
-  function viewPhoto(msg) {
-    setLightboxPhoto(msg)
-    if (msg.senderId !== user.uid && msg.photoUrl) {
+  function viewPhoto(msg, resolvedUrl) {
+    setLightboxPhoto({ id: msg.id, photoUrl: resolvedUrl })
+    const isRecipient = msg.senderId !== user.uid
+    if (isRecipient && msg.enc && msg.ciphertext) {
+      updateDoc(doc(db, 'messages', msg.id), {
+        ciphertext: deleteField(),
+        iv: deleteField(),
+        signature: deleteField(),
+        photoViewed: true,
+      }).catch(err => console.error('[photo] failed to clear from Firestore', err))
+    } else if (isRecipient && !msg.enc && msg.photoUrl) {
       updateDoc(doc(db, 'messages', msg.id), {
         photoUrl: deleteField(),
         photoViewed: true,
@@ -500,12 +574,13 @@ export default function Chat() {
   // Send a cat photo as a little emoji-style sticker (uses the cropped face
   // version if it's ready, otherwise falls back to the full photo)
   async function sendSticker(cat) {
-    if (sendingSticker) return
+    if (sendingSticker || !encReady) return
     setSendingSticker(cat.id)
     try {
+      const encrypted = await encrypt(cat.faceBase64 || cat.photoBase64)
       await addDoc(messagesRef, {
         type: 'sticker',
-        stickerUrl: cat.faceBase64 || cat.photoBase64,
+        ...encrypted,
         senderId: user.uid,
         senderName: profile?.name || 'You',
         createdAt: serverTimestamp(),
@@ -638,6 +713,7 @@ export default function Chat() {
               onLongPress={setContextMsg}
               onReact={toggleReact}
               onOpenPhoto={viewPhoto}
+              decrypted={decryptedMap[item.id]}
             />
           )
         })}
@@ -655,6 +731,12 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
+      {!encReady && (
+        <p className={styles.encBanner}>
+          🔒 Setting up encryption… make sure your partner has opened the app at least once too.
+        </p>
+      )}
+
       {/* Input bar */}
       <div className={styles.inputBar}>
         <input
@@ -668,7 +750,7 @@ export default function Chat() {
           className={styles.attachToggle}
           onMouseDown={e => e.preventDefault()}
           onClick={() => photoInputRef.current?.click()}
-          disabled={uploadingPhoto}
+          disabled={uploadingPhoto || !encReady}
           title="Attach photo"
         >
           {uploadingPhoto ? <span className={styles.attachSpinner} /> : '📷'}
@@ -685,6 +767,7 @@ export default function Chat() {
           className={`${styles.stickerToggle} ${showStickers ? styles.stickerToggleActive : ''}`}
           onMouseDown={e => e.preventDefault()}
           onClick={() => { setShowStickers(s => !s); setShowEmoji(false) }}
+          disabled={!encReady}
           title="Cat stickers"
         >
           {cats[0] ? (
@@ -704,7 +787,7 @@ export default function Chat() {
           className={`${styles.sendBtn} ${text.trim() ? styles.sendBtnActive : ''}`}
           onMouseDown={e => e.preventDefault()}
           onClick={sendMessage}
-          disabled={!text.trim() || sending}
+          disabled={!text.trim() || sending || !encReady}
         >
           ↑
         </button>
@@ -748,6 +831,7 @@ export default function Chat() {
           onPin={togglePin}
           onFav={toggleFav}
           onReact={toggleReact}
+          decrypted={decryptedMap[contextMsg.id]}
         />
       )}
 
