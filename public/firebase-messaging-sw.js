@@ -59,10 +59,14 @@ messaging.onBackgroundMessage((payload) => {
     body,
     icon: '/pwa-192.png',
     badge: '/pwa-192.png',
-    tag: 'justus-message',
+    // A unique tag per message means each one gets its own slot in the
+    // tray instead of replacing the previous unread one — this is what
+    // makes every message pop up on its own, WhatsApp-style. Chrome/Android
+    // still auto-groups multiple notifications from the same site into one
+    // expandable stack, so it doesn't get messy.
+    tag: `justus-message-${Date.now()}`,
     requireInteraction: false,
     silent: false,
-    renotify: true, // re-alert (vibrate again) even if a previous one with this tag is still showing
     vibrate: [200, 100, 200],
     data: { url },
   })
