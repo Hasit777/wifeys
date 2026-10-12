@@ -1,73 +1,63 @@
-# Just Us 🩷
-Your private app — just for you two.
+# Wifey's App 💌
 
-## Setup (takes ~10 minutes)
+A private, two-person web app for staying close: real-time chat, a shared memory timeline, push notifications, and a PIN lock. Built with React, Vite and Firebase, deployed on Vercel.
 
-### Step 1 — Install Node.js
-If you don't have it: https://nodejs.org (download the LTS version)
+> Personal project. Not intended for public use or sign-ups.
 
-### Step 2 — Set up Firebase (free)
-1. Go to https://console.firebase.google.com
-2. Click **Add project** → name it "justus" → create
-3. In the left menu: **Build → Authentication → Get started**
-   - Enable **Email/Password** provider
-4. In the left menu: **Build → Firestore Database → Create database**
-   - Choose **Start in test mode** → pick a region
-5. Click the ⚙️ gear → **Project settings** → scroll to **Your apps**
-6. Click the `</>` (Web) icon → register app → copy the config object
+## Features
 
-### Step 3 — Add your Firebase config
-Open `src/lib/firebase.js` and paste your config:
-```js
-const firebaseConfig = {
-  apiKey: "...",
-  authDomain: "...",
-  // etc
-}
-```
+- **Real-time chat** with instant delivery via Firestore listeners
+- **Push notifications** for new messages, even when the app is closed
+- **Memory timeline**: a shared, chronological collection of moments and notes
+- **PIN lock** so only the two of you get in
+- **Responsive**: works on desktop and mobile
 
-### Step 4 — Change your invite code (optional)
-In `src/hooks/useAuth.jsx`, line 12:
-```js
-const INVITE_CODE = 'XOXO42'  // ← change this to whatever you want
-```
+## Tech Stack
 
-### Step 5 — Run the app
-Open a terminal in this folder and run:
+| Layer | Technology |
+|---|---|
+| Frontend | React + Vite |
+| Backend | Firebase (Firestore, Auth, Cloud Messaging) |
+| Hosting | Vercel (auto-deploys from GitHub) |
+
+## Getting Started
+
 ```bash
+git clone https://github.com/<username>/<repo>.git
+cd <repo>
 npm install
-npm run dev
 ```
 
-Then open http://localhost:5173 in your browser 🎉
+Create a `.env` file in the project root:
 
-### Step 6 — Share with your partner
-You create an account first (you're the "creator").
-Send your partner the invite code → they sign up on the Join tab.
-
----
-
-## What's built so far
-- ✅ Phase 1 — Auth (login, signup, invite code, 2-user limit)
-- ✅ Phase 2 — Dashboard (4 widgets: messages, dates, memories, notes)
-- 🔜 Phase 3 — Chat
-- 🔜 Phase 4 — Important Dates + Countdowns
-- 🔜 Phase 5 — Memory Timeline
-- 🔜 Phase 6 — Love Notes
-- 🔜 Phase 7 — Polish (app lock, themes)
-
-## File structure
+```env
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_VAPID_KEY=
 ```
-src/
-  lib/firebase.js        ← Firebase config (fill this in!)
-  hooks/useAuth.jsx      ← Auth logic + invite code
-  pages/
-    Login.jsx            ← Sign in + Join screens
-    Dashboard.jsx        ← Home dashboard
-    Placeholders.jsx     ← Stubs for future pages
-  components/
-    ProtectedRoute.jsx   ← Guards pages from logged-out users
-  App.jsx                ← Routing
-  main.jsx               ← Entry point
-  index.css              ← Global styles
+
+Run it:
+
+```bash
+npm run dev      # http://localhost:5173
+npm run build    # production build
+npm run preview  # preview the build
 ```
+
+## Deployment
+
+Push to `main` and Vercel builds and deploys automatically. Add the same `VITE_FIREBASE_*` variables in Vercel under Project → Settings → Environment Variables.
+
+## Security
+
+- Firestore rules restrict read/write access to the two authorised users
+- The PIN lock is a convenience layer on top of Firebase Auth, not a replacement
+- Never commit `.env`
+
+## License
+
+Private. All rights reserved.
